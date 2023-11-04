@@ -24,7 +24,7 @@ data "archive_file" "function" {
 }
 
 resource "azurerm_storage_account" "storage_account_functionApp_function" {
-  name                     = "${var.prefix}storagefunction"
+  name                     = "${var.prefix}storagefunc"
   resource_group_name      = azurerm_resource_group.funcdeploy.name
   location                 = azurerm_resource_group.funcdeploy.location
   account_tier             = "Standard"
