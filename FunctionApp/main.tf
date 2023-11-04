@@ -98,7 +98,7 @@ resource "azurerm_function_app" "funcdeploy" {
 }
 
 resource "azurerm_role_assignment" "role_assignment_storage" {
-  scope                            = azurerm_storage_account.storage_account_function.id
+  scope                            = azurerm_storage_account.storage_account_functionApp_function.id
   role_definition_name             = "Storage Blob Data Contributor"
   principal_id                     = azurerm_function_app.funcdeploy.identity.0.principal_id
   skip_service_principal_aad_check = true
