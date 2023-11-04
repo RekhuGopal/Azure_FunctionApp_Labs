@@ -17,6 +17,34 @@ resource "azurerm_storage_container" "funcdeploy" {
   container_access_type = "private"
 }
 
+data "archive_file" "function" {
+  type        = "zip"
+  source_dir  = "${path.module}/FunctionApp/CRUDAPI/"
+  output_path = "${path.module}/functions.zip"
+}
+
+resource "azurerm_storage_account" "storage_account_functionApp_function" {
+  name                     = "${var.prefix}storagefunction"
+  resource_group_name      = azurerm_resource_group.funcdeploy.name
+  location                 = azurerm_resource_group.funcdeploy.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_storage_container" "storage_container_function" {
+  name                  = "function-releases"
+  storage_account_name  = azurerm_storage_account.storage_account_functionApp_function.name
+}
+
+resource "azurerm_storage_blob" "storage_blob_function" {
+  name                   = "functions-${substr(data.archive_file.function.output_md5,0,6)}.zip"
+  storage_account_name   = azurerm_storage_account.storage_account_functionApp_function.name
+  storage_container_name = azurerm_storage_container.storage_container_function.name
+  type                   = "Block"
+  content_md5            = data.archive_file.function.output_md5
+  source                 = "${path.module}/functions.zip"
+}
+
 resource "azurerm_application_insights" "funcdeploy" {
   name                = "${var.prefix}-appinsights"
   location            = azurerm_resource_group.funcdeploy.location
@@ -50,11 +78,11 @@ resource "azurerm_function_app" "funcdeploy" {
   storage_account_name       = azurerm_storage_account.funcdeploy.name
   storage_account_access_key = azurerm_storage_account.funcdeploy.primary_access_key
   https_only                 = true
-  version                    = "~3"
+  version                    = "~4"
   os_type                    = "linux"
   app_settings = {
-      "WEBSITE_RUN_FROM_PACKAGE" = "1"
       "FUNCTIONS_WORKER_RUNTIME" = "python"
+      "WEBSITE_RUN_FROM_PACKAGE"   = azurerm_storage_blob.storage_blob_function.url
       "APPINSIGHTS_INSTRUMENTATIONKEY" = "${azurerm_application_insights.funcdeploy.instrumentation_key}"
       "APPLICATIONINSIGHTS_CONNECTION_STRING" = "InstrumentationKey=${azurerm_application_insights.funcdeploy.instrumentation_key};IngestionEndpoint=https://japaneast-0.in.applicationinsights.azure.com/"
   }
@@ -69,30 +97,9 @@ resource "azurerm_function_app" "funcdeploy" {
    }
 }
 
-resource "azurerm_function_app_function" "example" {
-  name            = "example-function-app-function"
-  function_app_id = azurerm_function_app.funcdeploy.id
-  language        = "Python"
-  test_data = jsonencode({
-    "name" = "Azure"
-  })
-  config_json = jsonencode({
-    "bindings" = [
-      {
-        "authLevel" = "function"
-        "direction" = "in"
-        "methods" = [
-          "get",
-          "post",
-        ]
-        "name" = "req"
-        "type" = "httpTrigger"
-      },
-      {
-        "direction" = "out"
-        "name"      = "$return"
-        "type"      = "http"
-      },
-    ]
-  })
+resource "azurerm_role_assignment" "role_assignment_storage" {
+  scope                            = azurerm_storage_account.storage_account_function.id
+  role_definition_name             = "Storage Blob Data Contributor"
+  principal_id                     = azurerm_function_app.funcdeploy.identity.0.principal_id
+  skip_service_principal_aad_check = true
 }
