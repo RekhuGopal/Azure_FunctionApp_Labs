@@ -44,7 +44,7 @@ def demofunctionazure(req: func.HttpRequest) -> func.HttpResponse:
         connection_string = "DefaultEndpointsProtocol=https;AccountName=cloudquicklabsfatble;AccountKey=hsoqgs39O9b49D3OvLuop3ent8Rl0gL8WA5qv6QiXDKlIZFmleF+4qO7tsp2Gwq2FD/YMnvHzp9y+AStztCKIQ==;EndpointSuffix=core.windows.net"
         print(f"connection_string: {connection_string}")
         # table operations
-        table_name = "mydemotable"
+        table_name = "employeerecords"
         service_client = TableServiceClient.from_connection_string(connection_string)
 
         #create a table 

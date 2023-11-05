@@ -19,11 +19,6 @@ resource "azurerm_service_plan" "example" {
   sku_name            = "S1"
 }
 
-data "archive_file" "function" {
-  type        = "zip"
-  source_dir  = "${path.module}/CRUDAPI/"
-  output_path = "${path.module}/function.zip"
-}
 
 resource "azurerm_application_insights" "funcdeploy" {
   name                = "${var.prefix}-appinsights"
