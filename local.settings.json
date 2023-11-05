@@ -1,0 +1,8 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName=cloudquicklabsfatble;AccountKey=hsoqgs39O9b49D3OvLuop3ent8Rl0gL8WA5qv6QiXDKlIZFmleF+4qO7tsp2Gwq2FD/YMnvHzp9y+AStztCKIQ==;EndpointSuffix=core.windows.net",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing"
+  }
+}
