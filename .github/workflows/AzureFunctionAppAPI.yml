@@ -5,6 +5,10 @@ on:
 permissions:
       id-token: write
       contents: read
+env:
+  AZURE_FUNCTIONAPP_NAME: 'cloudquicklabs-func-app2'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'CRUDAPI' 
+  PYTHON_VERSION: '3.9'    
 jobs: 
   Azure-FunctionApp-Deployment:
     runs-on: ubuntu-latest
@@ -51,3 +55,26 @@ jobs:
 
       - name: Terraform Output
         run: terraform output
+
+      - name: Setup Python 3.9 Environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: 'Resolve Project Dependencies Using Pip'
+        shell: bash
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+          popd
+
+      - name: 'Run Azure Functions Action'
+        uses: Azure/functions-action@v1
+        id: fa
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true

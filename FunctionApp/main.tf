@@ -1,105 +1,109 @@
-resource "azurerm_resource_group" "funcdeploy" {
-  name     = "rg-${var.prefix}-function"
+resource "azurerm_resource_group" "example" {
+  name     = "example-group"
   location = var.location
 }
 
-resource "azurerm_storage_account" "funcdeploy" {
-  name                     = "${var.prefix}storage"
-  resource_group_name      = azurerm_resource_group.funcdeploy.name
-  location                 = azurerm_resource_group.funcdeploy.location
+resource "azurerm_storage_account" "example" {
+  name                     = "${var.prefix}exama"
+  resource_group_name      = azurerm_resource_group.example.name
+  location                 = azurerm_resource_group.example.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
 }
 
-resource "azurerm_storage_container" "funcdeploy" {
-  name                  = "contents"
-  storage_account_name  = azurerm_storage_account.funcdeploy.name
-  container_access_type = "private"
+resource "azurerm_service_plan" "example" {
+  name                = "example-service-plan"
+  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.example.name
+  os_type             = "Linux"
+  sku_name            = "S1"
 }
 
 data "archive_file" "function" {
   type        = "zip"
-  source_dir  = "${path.module}/FunctionApp/CRUDAPI/"
-  output_path = "${path.module}/functions.zip"
-}
-
-resource "azurerm_storage_account" "storage_account_functionApp_function" {
-  name                     = "${var.prefix}storfnc"
-  resource_group_name      = azurerm_resource_group.funcdeploy.name
-  location                 = azurerm_resource_group.funcdeploy.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-}
-
-resource "azurerm_storage_container" "storage_container_function" {
-  name                  = "function-releases"
-  storage_account_name  = azurerm_storage_account.storage_account_functionApp_function.name
-}
-
-resource "azurerm_storage_blob" "storage_blob_function" {
-  name                   = "functions-${substr(data.archive_file.function.output_md5,0,6)}.zip"
-  storage_account_name   = azurerm_storage_account.storage_account_functionApp_function.name
-  storage_container_name = azurerm_storage_container.storage_container_function.name
-  type                   = "Block"
-  content_md5            = data.archive_file.function.output_md5
-  source                 = "${path.module}/functions.zip"
+  source_dir  = "${path.module}/CRUDAPI/"
+  output_path = "${path.module}/function.zip"
 }
 
 resource "azurerm_application_insights" "funcdeploy" {
   name                = "${var.prefix}-appinsights"
-  location            = azurerm_resource_group.funcdeploy.location
-  resource_group_name = azurerm_resource_group.funcdeploy.name
+  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.example.name
   application_type    = "web"
 
   tags = {
-    "hidden-link:${azurerm_resource_group.funcdeploy.id}/providers/Microsoft.Web/sites/${var.prefix}func" = "Resource"
+    "hidden-link:${azurerm_resource_group.example.id}/providers/Microsoft.Web/sites/${var.prefix}func" = "Resource"
   }
 
 }
 
-resource "azurerm_app_service_plan" "funcdeploy" {
-  name                = "${var.prefix}-functions-consumption-asp"
-  location            = azurerm_resource_group.funcdeploy.location
-  resource_group_name = azurerm_resource_group.funcdeploy.name
-  kind                = "FunctionApp"
-  reserved            = true
 
-  sku {
-    tier = "Dynamic"
-    size = "Y1"
-  }
-}
+resource "azurerm_linux_function_app" "example" {
+  name                = "cloudquicklabs-func-app2"
+  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.example.name
+  service_plan_id     = azurerm_service_plan.example.id
 
-resource "azurerm_function_app" "funcdeploy" {
-  name                       = "${var.prefix}func"
-  location                   = azurerm_resource_group.funcdeploy.location
-  resource_group_name        = azurerm_resource_group.funcdeploy.name
-  app_service_plan_id        = azurerm_app_service_plan.funcdeploy.id
-  storage_account_name       = azurerm_storage_account.funcdeploy.name
-  storage_account_access_key = azurerm_storage_account.funcdeploy.primary_access_key
-  https_only                 = true
-  version                    = "~4"
-  os_type                    = "linux"
+  storage_account_name       = azurerm_storage_account.example.name
+  storage_account_access_key = azurerm_storage_account.example.primary_access_key
+
   app_settings = {
-      "FUNCTIONS_WORKER_RUNTIME" = "python"
-      "WEBSITE_RUN_FROM_PACKAGE"   = azurerm_storage_blob.storage_blob_function.url
-      "APPINSIGHTS_INSTRUMENTATIONKEY" = "${azurerm_application_insights.funcdeploy.instrumentation_key}"
-      "APPLICATIONINSIGHTS_CONNECTION_STRING" = "InstrumentationKey=${azurerm_application_insights.funcdeploy.instrumentation_key};IngestionEndpoint=https://japaneast-0.in.applicationinsights.azure.com/"
+    FUNCTIONS_WORKER_RUNTIME = "python"
+    WEBSITE_WORKER_INDEX = "1"
+    FUNCTIONS_EXTENSION_VERSION = "~4"
+    SCM_DO_BUILD_DURING_DEPLOYMENT = "1"
+    APPINSIGHTS_INSTRUMENTATIONKEY = azurerm_application_insights.funcdeploy.instrumentation_key
   }
 
   site_config {
-        linux_fx_version= "Python|3.8"        
-        ftps_state = "Disabled"
+    application_stack {
+      python_version = "3.9"
     }
-
-  identity {
-    type = "SystemAssigned"
-   }
+    cors {
+      allowed_origins     = ["https://portal.azure.com"]
+      support_credentials = true
+    }
+  }
 }
 
-resource "azurerm_role_assignment" "role_assignment_storage" {
-  scope                            = azurerm_storage_account.storage_account_functionApp_function.id
-  role_definition_name             = "Storage Blob Data Contributor"
-  principal_id                     = azurerm_function_app.funcdeploy.identity.0.principal_id
-  skip_service_principal_aad_check = true
+/*
+resource "azurerm_function_app_function" "example" {
+  name            = "demofunc2"
+  function_app_id = azurerm_linux_function_app.example.id
+  language        = "Python"
+  file {
+    name    = "function_app.py"
+    content = file("CRUDAPI/function_app.py")
+  }
+  file {
+    name    = "host.json"
+    content = file("CRUDAPI/host.json")
+  }
+  file {
+    name    = "requirements.txt"
+    content = file("CRUDAPI/requirements.txt")
+  }
+  test_data = jsonencode({
+    "name" = "Azure"
+  })
+  config_json = jsonencode({
+    "bindings" = [
+      {
+        "authLevel" = "function"
+        "direction" = "in"
+        "methods" = [
+          "get",
+          "post",
+        ]
+        "name" = "req"
+        "type" = "httpTrigger"
+      },
+      {
+        "direction" = "out"
+        "name"      = "$return"
+        "type"      = "http"
+      },
+    ]
+  })
 }
+*/
