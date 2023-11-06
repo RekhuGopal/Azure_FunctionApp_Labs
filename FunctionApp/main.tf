@@ -3,6 +3,7 @@ resource "azurerm_resource_group" "example" {
   location = var.location
 }
 
+/*
 resource "azurerm_storage_account" "example" {
   name                     = "${var.prefix}exama"
   resource_group_name      = azurerm_resource_group.example.name
@@ -61,7 +62,7 @@ resource "azurerm_linux_function_app" "example" {
   }
 }
 
-/*
+
 resource "azurerm_function_app_function" "example" {
   name            = "demofunc2"
   function_app_id = azurerm_linux_function_app.example.id
